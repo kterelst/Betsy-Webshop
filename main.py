@@ -10,6 +10,7 @@ __human_name__ = "Betsy Webshop"
 # creation data/tests in this file in if __name__ == __main__
 
 
+# create db-tables as defined in models.py
 def create_tables():
     with models.db:
         models.db.create_tables([
@@ -21,6 +22,7 @@ def create_tables():
             models.Transaction])
 
 
+# store some testdata
 def store_data():
     models.User.create(
         user_name='kittie',
@@ -81,38 +83,38 @@ def store_data():
         product_name='FST')
 
 
-def search(term):  # checked by test
+# search for term in product_name (case-insensitive)
+def search(term):
     return models.Product.select().where(fn.Lower(
         models.Product.product_name.contains(term.lower())))
 
 
-def list_user_products(user_id):  # checked by test
+# products owned by selected user
+def list_user_products(user_id):
     return (models.Product.select()
             .join(models.Ownership)
             .join(models.User)
             .where(models.User.user_name == user_id))
 
 
-def list_products_per_tag(tag_id):  # checked by test
+# products with selected tag
+def list_products_per_tag(tag_id):
     return (models.Product.select()
             .join(models.ProductTag)
             .join(models.Tag)
             .where(models.Tag.tag_text == tag_id))
 
 
-def add_product_to_catalog(user_id, product):  # checked by test
+# link user to product (nothing owned when new)
+def add_product_to_catalog(user_id, product):
     models.Ownership.get_or_create(
         user_name=user_id,
         product_name=product,
         defaults={'number_owned': 0})
-    query = (models.Ownership
-             .update(number_owned=models.Ownership.number_owned + 1)
-             .where(models.Ownership.user_name == user_id and
-                    models.Ownership.product_name == product))
-    query.execute()
 
 
-def remove_product(user_id, product_id):  # checked by test
+# remove link between user and product (if exists)
+def remove_product(user_id, product_id):
     owner = models.Ownership.get_or_none(
         models.Ownership.user_name == user_id and
         models.Ownership.product_name == product_id)
@@ -120,13 +122,16 @@ def remove_product(user_id, product_id):  # checked by test
         owner.delete_instance()
 
 
-def update_stock(product_id, new_quantity):  # checked by test
+# change quantity of product to new number
+def update_stock(product_id, new_quantity):
     query = models.Product.update(
         number_in_stock=new_quantity).where(
         models.Product.product_name == product_id)
     query.execute()
 
 
+# register a purchase containing:
+# write transaction, remove quantity from stock, add quantity to user
 def purchase_product(product_id, buyer_id, quantity):
     # Register transaction
     models.Transaction.create(
@@ -144,19 +149,22 @@ def purchase_product(product_id, buyer_id, quantity):
 
     # Add to new user
     add_product_to_catalog(buyer_id, product_id)
-    (models.Ownership
-        .update(number_owned=models.Ownership.number_owned + quantity)
-        .where(models.Ownership.user_name == buyer_id,
-               models.Ownership.product_name == product_id))
+    query = (models.Ownership
+             .update(number_owned=models.Ownership.number_owned + quantity)
+             .where(models.Ownership.user_name == buyer_id,
+                    models.Ownership.product_name == product_id))
+    query.execute()
 
 
 # def remove_product(product_id):
-# not according to specs assignment! Replaced above
-# (added user_id as input var)
+# this original function is not according to specs assignment!
+# Replaced above and added user_id as input variable
 
 
 if __name__ == "__main__":
     pass
+
+    # uncomment entire string or block by block for testing purpose
 
     # create_tables()
     # store_data()
